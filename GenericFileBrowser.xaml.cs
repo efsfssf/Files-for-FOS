@@ -12,6 +12,7 @@ using Windows.Storage;
 using Windows.Storage.FileProperties;
 using Windows.System;
 using Windows.UI;
+using Windows.UI.Popups;
 using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
@@ -353,11 +354,38 @@ namespace Files
         private static EmptyFolderTextState textState = new EmptyFolderTextState();
         public static EmptyFolderTextState TextState { get { return ItemViewModel.textState; } }
 
+        private async void InitMessageDialogHandler(IUICommand command)
+        {
+            if ((int)command.Id == 0)
+            {
+                await Launcher.LaunchUriAsync(new Uri("ms-settings:privacy-broadfilesystemaccess"));
+            }
+        }
+
         public async void GetItemsAsync(string path, CancellationToken ct)
         {
             
             PUIP.Path = path;
-            folder = await StorageFolder.GetFolderFromPathAsync(path);          // Set location to the current directory specified in path
+            try
+            {
+                folder = await StorageFolder.GetFolderFromPathAsync(path);          // Set location to the current directory specified in path
+            }
+            catch
+            {
+                MessageDialog dlg = new MessageDialog(
+                    "It seems you have not granted permission for this app to access the file system broadly. " +
+                    "Without this permission, the app will only be able to access a very limited set of filesystem locations. " +
+                    "You can grant this permission in the Settings app, if you wish. You can do this now or later. " +
+                    "If you change the setting while this app is running, it will terminate the app so that the " +
+                    "setting can be applied. Do you want to do this now?",
+                    "File system permissions");
+                dlg.Commands.Add(new UICommand("Yes", new UICommandInvokedHandler(InitMessageDialogHandler), 0));
+                dlg.Commands.Add(new UICommand("No", new UICommandInvokedHandler(InitMessageDialogHandler), 1));
+                dlg.DefaultCommandIndex = 0;
+                dlg.CancelCommandIndex = 1;
+                await dlg.ShowAsync();
+                Application.Current.Exit();
+            }
             folderList = await folder.GetFoldersAsync();                        // Create a read-only list of all folders in location
             fileList = await folder.GetFilesAsync();                            // Create a read-only list of all files in location
             int NumOfFolders = folderList.Count;                                // How many folders are in the list
@@ -365,19 +393,7 @@ namespace Files
             int NumOfItems = NumOfFiles + NumOfFolders;
             int NumItemsRead = 0;
             
-            if (NumOfItems == 0)
-            {
-                GenericFileBrowser.RemoveHiddenColumns();
-                TextState.isVisible = Visibility.Visible;
-                return;
-            }
-
-            PUIH.Header = "Loading " + NumOfItems + " items";
-
-            if(NumOfItems >= 75)
-            {
-                PVIS.isVisible = Visibility.Visible;
-            }
+            
 
             foreach (StorageFolder fol in folderList)
             {

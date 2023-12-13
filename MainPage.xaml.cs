@@ -8,6 +8,8 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.Storage.Pickers;
 using Windows.Storage;
+using System.Net;
+using System.Threading;
 
 namespace Files
 {
@@ -21,6 +23,7 @@ namespace Files
         string PicturesPath = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
         string MusicPath = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
         string VideosPath = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
+        string FileExplorerIndex = "ms-appx-web:///FileExplorer/Assets/webPayload/index.html";
         public MainPage()
         {
             this.InitializeComponent();
@@ -29,73 +32,113 @@ namespace Files
             var CoreTitleBar = CoreApplication.GetCurrentView().TitleBar;
             CoreTitleBar.ExtendViewIntoTitleBar = true;
             //DragArea.Height = CoreTitleBar.Height;
-            Window.Current.SetTitleBar(DragArea);
+            //Window.Current.SetTitleBar(DragArea);
 
             var titleBar = ApplicationView.GetForCurrentView().TitleBar;
             titleBar.ButtonBackgroundColor = Color.FromArgb(100, 255, 255, 255);
             titleBar.ButtonHoverBackgroundColor = Color.FromArgb(75, 10, 10, 10);
             titleBar.ButtonHoverBackgroundColor = Color.FromArgb(75, 10, 10, 10);
-            
 
+            Uri uri = new Uri(FileExplorerIndex);
+            Web.Navigate(uri);
 
+            StartServer();
             //WelcomeFileCheck(); - Legacy Function to be Removed Eventually
-            ContentFrame.Navigate(typeof(YourHome));
-            auto_suggest.IsEnabled = true;
-            auto_suggest.PlaceholderText = "Search Recents";
+            //ContentFrame.Navigate(typeof(YourHome));
+            //auto_suggest.IsEnabled = true;
+            //auto_suggest.PlaceholderText = "Search Recents";
         }
+
+        public async void StartServer()
+        {
+            HttpListener listener = new HttpListener();
+            listener.Prefixes.Add("http://localhost:9001/");
+            listener.Start();
+
+            // Создайте экземпляр ItemViewModel
+            ItemViewModel itemViewModel = new ItemViewModel(@"C:\");
+
+            while (true)
+            {
+                HttpListenerContext context = await listener.GetContextAsync();
+                HttpListenerRequest request = context.Request;
+                HttpListenerResponse response = context.Response;
+
+                // Обработка CORS
+                response.AddHeader("Access-Control-Allow-Origin", "*");
+                response.AddHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+                response.AddHeader("Access-Control-Allow-Headers", "Content-Type, Accept, X-Requested-With");
+
+                if (request.HttpMethod == "OPTIONS")
+                {
+                    response.StatusCode = (int)HttpStatusCode.OK;
+                    response.Close();
+                } else if (request.HttpMethod == "GET" && request.RawUrl == "/drives")
+                {
+                    itemViewModel.GetItemsAsync(@"C:\", new CancellationToken());
+                    string responseString = "{   \"value\":[        {            \"id\":\"OneDrive!S-1-5-21-3198801245-3580807-1487484180-1001!Personal|B0CE1D74A0C7A4D8!103\",            \"name\":\"OneDrive - Personal\",            \"driveType\":\"syncRoot\",            \"root\":{                            }        },        {            \"id\":\"local\",            \"name\":\"Local drive\",            \"driveType\":\"local\",            \"quota\":{                \"total\":239335370752,                \"used\":226654322688,                \"remaining\":12681048064,                \"state\":\"nearing\"            },            \"root\":{                            }        }    ]    }";
+                    byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
+                    response.ContentLength64 = buffer.Length;
+                    System.IO.Stream output = response.OutputStream;
+                    output.Write(buffer, 0, buffer.Length);
+                    output.Close();
+                }
+            }
+        }
+
 
         private void navView_ItemInvoked(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
         {
             NavigationViewItem item = args.SelectedItem as NavigationViewItem;
-            if (item.Name == "homeIc")
-            {
-                ContentFrame.Navigate(typeof(YourHome));
-                auto_suggest.PlaceholderText = "Search Recents";
-            }
-            else if (item.Name == "DesktopIC")
-            {
-                ContentFrame.Navigate(typeof(GenericFileBrowser), DesktopPath);
-                auto_suggest.PlaceholderText = "Search Desktop";
-            }
-            else if (item.Name == "DocumentsIC")
-            {
-                ContentFrame.Navigate(typeof(GenericFileBrowser), DocumentsPath);
-                auto_suggest.PlaceholderText = "Search Documents";
-            }
-            else if (item.Name == "DownloadsIC")
-            {
-                ContentFrame.Navigate(typeof(GenericFileBrowser), DownloadsPath);
-                auto_suggest.PlaceholderText = "Search Downloads";
-            }
-            else if (item.Name == "PicturesIC")
-            {
-                ContentFrame.Navigate(typeof(GenericFileBrowser), PicturesPath);
-                auto_suggest.PlaceholderText = "Search Pictures";
-            }
-            else if (item.Name == "MusicIC")
-            {
-                ContentFrame.Navigate(typeof(GenericFileBrowser), MusicPath);
-                auto_suggest.PlaceholderText = "Search Music";
-            }
-            else if (item.Name == "VideosIC")
-            {
-                ContentFrame.Navigate(typeof(GenericFileBrowser), VideosPath);
-                auto_suggest.PlaceholderText = "Search Videos";
-            }
-            else if (item.Name == "LocD_IC")
-            {
-                ContentFrame.Navigate(typeof(GenericFileBrowser), @"C:\");
-                auto_suggest.PlaceholderText = "Search";
-            }
-            else if (item.Name == "OneD_IC")
-            {
-                ContentFrame.Navigate(typeof(GenericFileBrowser), OneDrivePath);
-                auto_suggest.PlaceholderText = "Search OneDrive";
-            }
-            else if(item.Content.Equals("Settings"))
-            {
-                ContentFrame.Navigate(typeof(Settings));
-            }
+            //if (item.Name == "homeIc")
+            //{
+            //    ContentFrame.Navigate(typeof(YourHome));
+            //    auto_suggest.PlaceholderText = "Search Recents";
+            //}
+            //else if (item.Name == "DesktopIC")
+            //{
+            //    ContentFrame.Navigate(typeof(GenericFileBrowser), DesktopPath);
+            //    auto_suggest.PlaceholderText = "Search Desktop";
+            //}
+            //else if (item.Name == "DocumentsIC")
+            //{
+            //    ContentFrame.Navigate(typeof(GenericFileBrowser), DocumentsPath);
+            //    auto_suggest.PlaceholderText = "Search Documents";
+            //}
+            //else if (item.Name == "DownloadsIC")
+            //{
+            //    ContentFrame.Navigate(typeof(GenericFileBrowser), DownloadsPath);
+            //    auto_suggest.PlaceholderText = "Search Downloads";
+            //}
+            //else if (item.Name == "PicturesIC")
+            //{
+            //    ContentFrame.Navigate(typeof(GenericFileBrowser), PicturesPath);
+            //    auto_suggest.PlaceholderText = "Search Pictures";
+            //}
+            //else if (item.Name == "MusicIC")
+            //{
+            //    ContentFrame.Navigate(typeof(GenericFileBrowser), MusicPath);
+            //    auto_suggest.PlaceholderText = "Search Music";
+            //}
+            //else if (item.Name == "VideosIC")
+            //{
+            //    ContentFrame.Navigate(typeof(GenericFileBrowser), VideosPath);
+            //    auto_suggest.PlaceholderText = "Search Videos";
+            //}
+            //else if (item.Name == "LocD_IC")
+            //{
+            //    ContentFrame.Navigate(typeof(GenericFileBrowser), @"C:\");
+            //    auto_suggest.PlaceholderText = "Search";
+            //}
+            //else if (item.Name == "OneD_IC")
+            //{
+            //    ContentFrame.Navigate(typeof(GenericFileBrowser), OneDrivePath);
+            //    auto_suggest.PlaceholderText = "Search OneDrive";
+            //}
+            //else if(item.Content.Equals("Settings"))
+            //{
+            //    ContentFrame.Navigate(typeof(Settings));
+            //}
         }
 
         public async void WelcomeFileCheck()
@@ -103,11 +146,11 @@ namespace Files
             string env = Environment.ExpandEnvironmentVariables("%userprofile%");
             Windows.Storage.StorageFolder storageFolder = Windows.Storage.ApplicationData.Current.LocalCacheFolder;
             string cachePath = storageFolder.Path + @"\welcome.txt";
-            diagText.Text = cachePath;
+            //diagText.Text = cachePath;
             FileInfo fInfo = new FileInfo(cachePath);
             if (await storageFolder.TryGetItemAsync("welcome.txt") == null)
             {
-                WelcomeGrid.Visibility = Visibility.Visible;
+               // WelcomeGrid.Visibility = Visibility.Visible;
             }
 
         }
@@ -122,7 +165,7 @@ namespace Files
 
             if (folder != null)
             {
-                WelcomeGrid.Visibility = Visibility.Collapsed;
+               // WelcomeGrid.Visibility = Visibility.Collapsed;
 
                 var fal = Windows.Storage.AccessCache.StorageApplicationPermissions.FutureAccessList;
                 fal.Clear();
