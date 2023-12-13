@@ -10,6 +10,8 @@ using Windows.Storage.Pickers;
 using Windows.Storage;
 using System.Net;
 using System.Threading;
+using Newtonsoft.Json;
+using System.Collections.Generic;
 
 namespace Files
 {
@@ -57,6 +59,7 @@ namespace Files
 
             // Создайте экземпляр ItemViewModel
             ItemViewModel itemViewModel = new ItemViewModel(@"C:\");
+            
 
             while (true)
             {
@@ -75,8 +78,8 @@ namespace Files
                     response.Close();
                 } else if (request.HttpMethod == "GET" && request.RawUrl == "/drives")
                 {
-                    itemViewModel.GetItemsAsync(@"C:\", new CancellationToken());
-                    string responseString = "{   \"value\":[        {            \"id\":\"OneDrive!S-1-5-21-3198801245-3580807-1487484180-1001!Personal|B0CE1D74A0C7A4D8!103\",            \"name\":\"OneDrive - Personal\",            \"driveType\":\"syncRoot\",            \"root\":{                            }        },        {            \"id\":\"local\",            \"name\":\"Local drive\",            \"driveType\":\"local\",            \"quota\":{                \"total\":239335370752,                \"used\":226654322688,                \"remaining\":12681048064,                \"state\":\"nearing\"            },            \"root\":{                            }        }    ]    }";
+                    List<object> drives = await itemViewModel.GetInternalDrives();
+                    string responseString = JsonConvert.SerializeObject(new { value = drives });
                     byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
                     response.ContentLength64 = buffer.Length;
                     System.IO.Stream output = response.OutputStream;
