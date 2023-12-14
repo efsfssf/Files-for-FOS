@@ -1530,6 +1530,9 @@
             n.d(t, "a", (function () {
                     return P
                 })),
+            n.d(t, "RB", (function () {
+                    return RB
+                })),
             n.d(t, "n", (function () {
                     return D
                 }));
@@ -1541,6 +1544,7 @@
             s = "unknown",
             u = "root",
             l = "downloads",
+            RB = "RecycleBin",
             d = "local",
             f = "me",
             m = {
@@ -21152,7 +21156,13 @@
                 endpoint: p.c,
                 driveId: "local"
             },
+            RBv = {
+                name: p.RB,
+                endpoint: p.c,
+                driveId: "local"
+            },
             h = m.specialDriveItemKeyFacet.serialize(v),
+            RB = m.specialDriveItemKeyFacet.serialize(RBv),
             g = Object(i.createSingleItemOperationHandler)()((function (e) {
                         var t = this,
                         n = e.itemKey;
@@ -21170,12 +21180,14 @@
                                                 endpoint: t
                                             }),
                                             m = new a.ItemResolver,
-                                            p = [h, i],
+                                            p = [h, RB, i], // ПОРЯДОК ОТОБРАЖЕНИЯ КНОПОК В ЛЕВОМ НИЖНЕМ УГЛУ
                                             m.resolveItems({
                                                 items: (v = {}, v[h] = Object(r.__assign)(Object(r.__assign)(Object(r.__assign)(Object(r.__assign)({}, c.displayNameFacet.pack(u.e.navTrayDownloadsTooltipText)), c.folderFacet.pack({})), s.iconFacet.pack("MFEDownloads")), d.e.pack({
                                                                 id: "Downloads"
                                                             })), v[i] = Object(r.__assign)(Object(r.__assign)(Object(r.__assign)(Object(r.__assign)({}, c.displayNameFacet.pack(u.e.navTraySettingsTooltipText)), c.folderFacet.pack({})), s.iconFacet.pack("MFESettings")), d.e.pack({
                                                                 id: "Settings"
+                                                            })), v[RB] = Object(r.__assign)(Object(r.__assign)(Object(r.__assign)(Object(r.__assign)({}, c.displayNameFacet.pack(u.e.navTrayRecycleBinTooltipText)), c.folderFacet.pack({})), s.iconFacet.pack("MFERecycleBin")), d.e.pack({
+                                                                id: "RecycleBin"
                                                             })), v)
                                             }),
                                             m.resolveItems({
