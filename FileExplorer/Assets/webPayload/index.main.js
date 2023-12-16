@@ -21910,6 +21910,8 @@
                                                                                             }))),
                                                                                 _ = h.driveItemSetKeyFacet.deserialize(a.currentItemSetKey).driveItemKey,
                                                                                 O = v.driveItemKeyFacet.serialize(_);
+                                                                                if (!d && n.resourceData.itemId == 'root')
+                                                                                    d = { itemKey: s };
                                                                                 if (!d || !d.itemKey || d.itemKey !== O)
                                                                                     throw new S({
                                                                                         message: "The item specified in this message is not a child of the current folder."
