@@ -12,6 +12,9 @@ using System.Net;
 using System.Threading;
 using Newtonsoft.Json;
 using System.Collections.Generic;
+using Windows.Foundation.Metadata;
+using System.Diagnostics;
+using Bridge;
 
 namespace Files
 {
@@ -25,7 +28,9 @@ namespace Files
         string PicturesPath = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
         string MusicPath = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
         string VideosPath = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
-        string FileExplorerIndex = "ms-appx-web:///FileExplorer/Assets/webPayload/index.html";
+        //string FileExplorerIndex = "ms-appx-web:///FileExplorer/Assets/webPayload/index.html";
+        string FileExplorerIndex = "ms-appx-web:///FileExplorer/test.html";
+
         public MainPage()
         {
             this.InitializeComponent();
@@ -43,12 +48,29 @@ namespace Files
 
             Uri uri = new Uri(FileExplorerIndex);
             Web.Navigate(uri);
+            Debug.WriteLine("................." +
+                "\n" +
+                "\n" +
+                "\nSubscribe");
+            Web.NavigationCompleted += webView_NavigationStarting;
+
+
 
             StartServer();
             //WelcomeFileCheck(); - Legacy Function to be Removed Eventually
             //ContentFrame.Navigate(typeof(YourHome));
             //auto_suggest.IsEnabled = true;
             //auto_suggest.PlaceholderText = "Search Recents";
+        }
+
+        private void webView_NavigationStarting(WebView sender, WebViewNavigationCompletedEventArgs args)
+        {
+            Web.AddWebAllowedObject("nativeObject", new MyNativeClass());
+        }
+
+        private void webView_NavigationStarting(WebView sender, WebViewNavigationStartingEventArgs args)
+        {
+            Web.AddWebAllowedObject("nativeObject", new MyNativeClass());
         }
 
         public async void StartServer()
@@ -179,9 +201,6 @@ namespace Files
             }
         }
 
-        private void auto_suggest_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
-        {
-            
-        }
+        
     }
 }
