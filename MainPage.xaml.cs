@@ -52,7 +52,6 @@ namespace Files
                 "\n" +
                 "\n" +
                 "\nSubscribe");
-            Web.NavigationCompleted += webView_NavigationStarting;
 
 
 
@@ -62,12 +61,6 @@ namespace Files
             //auto_suggest.IsEnabled = true;
             //auto_suggest.PlaceholderText = "Search Recents";
         }
-
-        private void webView_NavigationStarting(WebView sender, WebViewNavigationCompletedEventArgs args)
-        {
-            Web.AddWebAllowedObject("nativeObject", new MyNativeClass());
-        }
-
         private void webView_NavigationStarting(WebView sender, WebViewNavigationStartingEventArgs args)
         {
             Web.AddWebAllowedObject("nativeObject", new MyNativeClass());
