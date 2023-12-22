@@ -15,6 +15,7 @@ using System.Collections.Generic;
 using Windows.Foundation.Metadata;
 using System.Diagnostics;
 using Bridge;
+using System.Threading.Tasks;
 
 namespace Files
 {
@@ -28,8 +29,8 @@ namespace Files
         string PicturesPath = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
         string MusicPath = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
         string VideosPath = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
-        //string FileExplorerIndex = "ms-appx-web:///FileExplorer/Assets/webPayload/index.html";
-        string FileExplorerIndex = "ms-appx-web:///FileExplorer/test.html";
+        string FileExplorerIndex = "ms-appx-web:///FileExplorer/Assets/webPayload/index.html";
+        //string FileExplorerIndex = "ms-appx-web:///FileExplorer/test.html";
 
         public MainPage()
         {
@@ -54,7 +55,7 @@ namespace Files
                 "\nSubscribe");
 
 
-
+            OnClipboardChanged();
             StartServer();
             //WelcomeFileCheck(); - Legacy Function to be Removed Eventually
             //ContentFrame.Navigate(typeof(YourHome));
@@ -63,8 +64,20 @@ namespace Files
         }
         private void webView_NavigationStarting(WebView sender, WebViewNavigationStartingEventArgs args)
         {
-            Web.AddWebAllowedObject("nativeObject", new MyNativeClass());
+            Web.AddWebAllowedObject("clipboardOperations", new MyNativeClass());
         }
+
+        private async void OnClipboardChanged()
+        {
+            // Здесь ваш код, который вызывается при изменении буфера обмена
+            await Task.Delay(10000);
+            // Вызов JavaScript функции из C#
+            await Web.InvokeScriptAsync("eval", new string[] { @"
+                var event = new Event('clipboardchanged');
+                window.dispatchEvent(event);
+            " });
+        }
+
 
         public async void StartServer()
         {
@@ -91,13 +104,25 @@ namespace Files
                 {
                     response.StatusCode = (int)HttpStatusCode.OK;
                     response.Close();
-                } else if (request.HttpMethod == "GET" && request.RawUrl == "/drives")
+                } 
+                else if (request.HttpMethod == "GET" && request.RawUrl == "/drives")
                 {
                     List<object> drives = await itemViewModel.GetInternalDrives();
                     string responseString = JsonConvert.SerializeObject(new { value = drives });
                     byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
                     response.ContentLength64 = buffer.Length;
                     System.IO.Stream output = response.OutputStream;
+                    output.Write(buffer, 0, buffer.Length);
+                    output.Close();
+                }
+                else if (request.HttpMethod == "GET" && request.RawUrl == "/lang")
+                {
+                    // Загрузите JSON из файла
+                    StorageFile file = await StorageFile.GetFileFromApplicationUriAsync(new Uri("ms-appx:///FileExplorer/Assets/webPayload/languages/my_lang_EN_US.html"));
+                    string json = await FileIO.ReadTextAsync(file);
+                    byte[] buffer = System.Text.Encoding.UTF8.GetBytes(json);
+                    response.ContentLength64 = buffer.Length;
+                    Stream output = response.OutputStream;
                     output.Write(buffer, 0, buffer.Length);
                     output.Close();
                 }

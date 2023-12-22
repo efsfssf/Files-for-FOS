@@ -1,31 +1,38 @@
+function loadJson() {
+    return new Promise((resolve, reject) => {
+        var xobj = new XMLHttpRequest();
+        xobj.overrideMimeType("application/json");
+        xobj.open('GET', 'http://localhost:9001/lang', true);
+        xobj.onreadystatechange = function () {
+            if (xobj.readyState == 4 && xobj.status == "200") {
+                var data = JSON.parse(xobj.responseText);
+                console.log(data);
+                resolve(data);
+            }
+        };
+        xobj.onerror = function () {
+            reject(new Error("Network Error"));
+        };
+        xobj.send(null);
+    });
+}
+
 const localizationLoader = {
-  localizedStrings: "",
+    localizedStrings: "",
 
-  loadJsonData() {
-    return fetch('languages/en-us.json')
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+    async loadJsonData() {
+        this.localizedStrings = await loadJson();
+    },
+
+    getLocalizedString(key, index) {
+        if (!this.localizedStrings) {
+            // ?
         }
-        return response.json();
-      })
-      .then(data => {
-        this.localizedStrings = data;
-      })
-      .catch(error => {
-        console.error('Error fetching/parsing JSON:', error.message);
-      });
-  },
 
-  getLocalizedString(key, index) {
-    if (!this.localizedStrings) {
-      // ?
+        return this.localizedStrings[key] && this.localizedStrings[key][index]
+            ? this.localizedStrings[key][index]
+            : `${index}.`; // :(
     }
-
-    return this.localizedStrings[key] && this.localizedStrings[key][index]
-      ? this.localizedStrings[key][index]
-      : `${index}.`; // :(
-  }
 };
 
 localizationLoader.loadJsonData();

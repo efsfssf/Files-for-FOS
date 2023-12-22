@@ -1851,6 +1851,7 @@
     <Content Include="FileExplorer\Assets\webPayload\index.settingsaccount.js" />
     <Content Include="FileExplorer\Assets\webPayload\index.shared-react-filehovercard.js" />
     <Content Include="FileExplorer\Assets\webPayload\index.tti-polyfill.js" />
+    <Content Include="FileExplorer\Assets\webPayload\languages\my_lang_EN_US.html" />
     <Content Include="FileExplorer\Assets\webPayload\localizationLoader.js" />
     <Content Include="FileExplorer\test.html" />
     <Content Include="Properties\Default.rd.xml" />

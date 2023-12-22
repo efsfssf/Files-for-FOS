@@ -7,9 +7,14 @@
     <textarea id="result" rows="4" cols="50"></textarea>
     <script type='text/javascript'>
 
-        var result = window.nativeObject.nativeMethod();
+        var result = window.clipboardOperations.nativeMethod();
         var json = JSON.parse(result);
         document.getElementById('result').value = json.result;
+
+        window.addEventListener('clipboardchanged', function (e) {
+            document.getElementById('result').value += "янашрхе!!";
+        });
+
 
     </script>
 </body>
