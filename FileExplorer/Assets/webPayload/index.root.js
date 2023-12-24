@@ -24966,6 +24966,10 @@
                                 lightIconPath: ts.a,
                                 darkIconPath: hs.a
                             }),
+                            MFELocalStorage: o.createElement(Aa, {
+                                lightIconPath: ts.a,
+                                darkIconPath: hs.a
+                            }),
                             MFERemovableStorage: o.createElement(Aa, {
                                 lightIconPath: rs.a,
                                 darkIconPath: vs.a
@@ -24974,10 +24978,6 @@
                                 alt: "",
                                 src: Va.a,
                                 className: "ms-ThemedIcon"
-                            }),
-                            MFELocalStorage: o.createElement(Aa, {
-                                lightIconPath: rs.a,
-                                darkIconPath: vs.a
                             }),
                             MFEOneDriveSmall: o.createElement("img", {
                                 alt: "",

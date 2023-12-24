@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -179,6 +180,8 @@ namespace Files
             }
         }
 
+        
+
         public async void GetItemsAsync(string path, CancellationToken ct)
         {
 
@@ -271,9 +274,11 @@ namespace Files
         public async Task<List<object>> GetInternalDrives()
         {
             string driveLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            //string driveLetters = "G";
             int driveLettersLen = driveLetters.Length;
             string removableDriveLetters = "";
             string driveLetter;
+            List<string> removableLetterList = new List<string>();
 
             List<object> drives = new List<object>();
             StorageFolder removableDevices = KnownFolders.RemovableDevices;
@@ -283,13 +288,18 @@ namespace Files
             {
                 if (string.IsNullOrEmpty(removableDevice.Path)) continue;
                 driveLetter = removableDevice.Path.Substring(0, 1).ToUpper();
-                if (driveLetters.IndexOf(driveLetter) > -1) removableDriveLetters += driveLetter;
+                if (driveLetters.IndexOf(driveLetter) > -1)
+                {
+                    removableDriveLetters += driveLetter;
+                    removableLetterList.Add(driveLetter);
+                }
             }
 
             for (int curDrive = 0; curDrive < driveLettersLen; curDrive++)
             {
                 driveLetter = driveLetters.Substring(curDrive, 1);
-                if (removableDriveLetters.IndexOf(driveLetter) > -1) continue;
+                //if (removableDriveLetters.IndexOf(driveLetter) > -1) continue;
+                //driveLetter = "G";
 
                 try
                 {
@@ -310,27 +320,119 @@ namespace Files
                     {
                         id = "root"+ driveLetter,
                         name = "Local drive ("+ driveLetter+":)",
-                        driveType = "local",
+                        driveType = removableLetterList.Contains(driveLetter) == true ? "portable" : "local",
                         quota = new
                         {
                             total = totalSpace,
                             used = usedSpace,
                             remaining = freeSpace,
-                            state = state
+                            state
                         },
                         root = new { }
                     });
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // Пропустить диск, если он не существует
+                    Debug.Print("\n\n\n\nError: " + ex.HResult);
+                    if (ex.HResult == -2147024891)
+                    {
+                        MessageDialog dlg = new MessageDialog(
+                    "It seems you have not granted permission for this app to access the file system broadly. " +
+                    "Without this permission, the app will only be able to access a very limited set of filesystem locations. " +
+                    "You can grant this permission in the Settings app, if you wish. You can do this now or later. " +
+                    "If you change the setting while this app is running, it will terminate the app so that the " +
+                    "setting can be applied. Do you want to do this now?",
+                    "File system permissions");
+                        dlg.Commands.Add(new UICommand("Yes", new UICommandInvokedHandler(InitMessageDialogHandler), 0));
+                        dlg.Commands.Add(new UICommand("No", new UICommandInvokedHandler(InitMessageDialogHandler), 1));
+                        dlg.DefaultCommandIndex = 0;
+                        dlg.CancelCommandIndex = 1;
+                        await dlg.ShowAsync();
+                        Application.Current.Exit();
+                    }    
                 }
             }
 
             return drives;
         }
 
+        async public Task<List<object>> GetFolderInfo(string driveId, string folderName)
+        {
+            List<object> info = new List<object>();
 
 
+
+            return info;
+        }
+
+        async public Task<object> DriveStatus(string driveLetter)
+        {
+            object status = new object();
+            List<string> removableLetterList = new List<string>();
+
+            StorageFolder removableDevices = KnownFolders.RemovableDevices;
+            IReadOnlyList<StorageFolder> folders = await removableDevices.GetFoldersAsync();
+
+            foreach (StorageFolder removableDevice in folders)
+            {
+                if (string.IsNullOrEmpty(removableDevice.Path)) continue;
+                driveLetter = removableDevice.Path.Substring(0, 1).ToUpper();
+                removableLetterList.Add(driveLetter);
+            }
+
+
+            try
+            {
+                StorageFolder drive = await StorageFolder.GetFolderFromPathAsync(driveLetter + ":");
+                var properties = await drive.Properties.RetrievePropertiesAsync(new string[] { "System.FreeSpace", "System.Capacity" });
+                ulong freeSpace = (ulong)properties["System.FreeSpace"];
+                ulong totalSpace = (ulong)properties["System.Capacity"];
+                ulong usedSpace = totalSpace - freeSpace;
+
+                string state = "unknown";
+                double usedPercentage = (double)usedSpace / totalSpace;
+                if (usedPercentage < 0.7) state = "normal";
+                else if (usedPercentage < 0.9) state = "nearing";
+                else if (usedPercentage < 1) state = "critical";
+                else state = "exceeded";
+
+                status = (new
+                {
+                    id = "root" + driveLetter,
+                    name = "Local drive (" + driveLetter + ":)",
+                    driveType = removableLetterList.Contains(driveLetter) == true ? "portable" : "local",
+                    quota = new
+                    {
+                        total = totalSpace,
+                        used = usedSpace,
+                        remaining = freeSpace,
+                        state
+                    },
+                    root = new { }
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.Print("\n\n\n\nError: " + ex.HResult);
+                if (ex.HResult == -2147024891)
+                {
+                    MessageDialog dlg = new MessageDialog(
+                "It seems you have not granted permission for this app to access the file system broadly. " +
+                "Without this permission, the app will only be able to access a very limited set of filesystem locations. " +
+                "You can grant this permission in the Settings app, if you wish. You can do this now or later. " +
+                "If you change the setting while this app is running, it will terminate the app so that the " +
+                "setting can be applied. Do you want to do this now?",
+                "File system permissions");
+                    dlg.Commands.Add(new UICommand("Yes", new UICommandInvokedHandler(InitMessageDialogHandler), 0));
+                    dlg.Commands.Add(new UICommand("No", new UICommandInvokedHandler(InitMessageDialogHandler), 1));
+                    dlg.DefaultCommandIndex = 0;
+                    dlg.CancelCommandIndex = 1;
+                    await dlg.ShowAsync();
+                    Application.Current.Exit();
+                }
+            }
+
+            return status;
+        }
     }
 }

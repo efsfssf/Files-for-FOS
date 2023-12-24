@@ -16,6 +16,7 @@ using Windows.Foundation.Metadata;
 using System.Diagnostics;
 using Bridge;
 using System.Threading.Tasks;
+using Windows.ApplicationModel.Activation;
 
 namespace Files
 {
@@ -55,7 +56,12 @@ namespace Files
                 "\nSubscribe");
 
 
-            OnClipboardChanged();
+            // Получить идентификатор текущей папки
+            StorageFolder folder = Windows.ApplicationModel.Package.Current.InstalledLocation;
+
+
+
+        OnClipboardChanged();
             StartServer();
             //WelcomeFileCheck(); - Legacy Function to be Removed Eventually
             //ContentFrame.Navigate(typeof(YourHome));
@@ -100,6 +106,11 @@ namespace Files
                 response.AddHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
                 response.AddHeader("Access-Control-Allow-Headers", "Content-Type, Accept, X-Requested-With");
 
+                if (request.HttpMethod == "GET")
+                {
+                    Debug.Print("\n\n\n\n\nЗАПРОС ПОСТУПИЛ!!!!!!!!!!!!!!!!! " + request.RawUrl + "\n\n");
+                }
+
                 if (request.HttpMethod == "OPTIONS")
                 {
                     response.StatusCode = (int)HttpStatusCode.OK;
@@ -111,7 +122,7 @@ namespace Files
                     string responseString = JsonConvert.SerializeObject(new { value = drives });
                     byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
                     response.ContentLength64 = buffer.Length;
-                    System.IO.Stream output = response.OutputStream;
+                    Stream output = response.OutputStream;
                     output.Write(buffer, 0, buffer.Length);
                     output.Close();
                 }
@@ -126,6 +137,39 @@ namespace Files
                     output.Write(buffer, 0, buffer.Length);
                     output.Close();
                 }
+                else if (request.HttpMethod == "GET" && request.RawUrl.StartsWith("/drives/") && request.RawUrl.Contains("/items/"))
+                {
+                    // Извлеките идентификатор диска и имя папки из URL
+                    var urlParts = request.RawUrl.Split('/');
+                    var driveId = urlParts[2];
+                    var folderName = urlParts[4];
+
+                    // Получите информацию о папке
+                    List<object> folderInfo = await itemViewModel.GetFolderInfo(driveId, folderName);
+
+                    // Сериализуйте информацию о папке в JSON
+                    string responseString = JsonConvert.SerializeObject(folderInfo);
+
+                    // Отправьте ответ
+                    byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
+                    response.ContentLength64 = buffer.Length;
+                    Stream output = response.OutputStream;
+                    output.Write(buffer, 0, buffer.Length);
+                    output.Close();
+                }
+                else if (request.HttpMethod == "GET" && request.RawUrl.StartsWith("/drives/") && !request.RawUrl.Contains("/me/") && !request.RawUrl.Contains("/apps"))
+                {
+                    string driveId = request.RawUrl.Split('?')[0].Substring(8); // Получаем ID диска из URL
+                    if (request.QueryString["$select"].Contains("syncStatus")) // Проверяем, есть ли syncStatus в select
+                    {
+                        // Здесь вы можете добавить код для обработки запроса
+                        // Например, получить информацию о диске с использованием driveId
+
+                        object status = await itemViewModel.DriveStatus(driveId[driveId.Length - 1].ToString());
+                    }
+                }
+
+
             }
         }
 
