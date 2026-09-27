@@ -1,20 +1,481 @@
 ﻿<!DOCTYPE html>
 <html>
-  <head>
+<head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
-    />
-    <script></script>
-    <title>Modern File Explorer app</title>
-  </head>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+    <style>
+        #fos-net-toggle {
+            position: fixed;
+            right: 14px;
+            bottom: 14px;
+            z-index: 2147483646;
+            padding: 7px 12px;
+            border: 1px solid #60758c;
+            border-radius: 4px;
+            background: #172332;
+            color: #fff;
+            font: 13px Segoe UI, sans-serif;
+            cursor: pointer;
+            box-shadow: 0 2px 10px #0007;
+        }
 
-  <body>
-	  <textarea id="myTextarea" rows="10" cols="45" name="text" style="position: absolute;z-index: 9999; /*opacity: 0*/ right: 0"></textarea>
-	  <script type="text/javascript" src="localizationLoader.js"></script>
-	  <script type="text/javascript" src="index.fabric~main.js"></script>
-	  <script type="text/javascript" src="index.main.js"></script>
-	  <script type="text/javascript" src="index.react~main.js"></script>
-  </body>
+        #fos-net-panel {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 44vh;
+            min-height: 250px;
+            z-index: 2147483647;
+            display: none;
+            background: #16202c;
+            color: #e9f0f8;
+            border-top: 2px solid #58769c;
+            box-shadow: 0 -5px 24px #0009;
+            font: 12px Segoe UI, sans-serif;
+        }
+
+            #fos-net-panel.fos-open {
+                display: flex;
+                flex-direction: column;
+            }
+
+            #fos-net-panel * {
+                box-sizing: border-box;
+            }
+
+            #fos-net-panel button, #fos-net-panel input {
+                font: inherit;
+                border: 1px solid #52647a;
+                color: #e9f0f8;
+                background: #243344;
+                border-radius: 3px;
+            }
+
+            #fos-net-panel button {
+                cursor: pointer;
+                padding: 4px 9px;
+            }
+
+                #fos-net-panel button:hover {
+                    background: #344c66;
+                }
+
+                #fos-net-panel button:focus, #fos-net-toggle:focus,
+                #fos-net-panel input:focus {
+                    outline: 2px solid #74aef0;
+                    outline-offset: 1px;
+                }
+
+        #fos-net-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 8px;
+            border-bottom: 1px solid #3a4a5d;
+            flex-wrap: wrap;
+        }
+
+            #fos-net-toolbar strong {
+                font-size: 14px;
+                margin-right: 6px;
+            }
+
+            #fos-net-toolbar > * {
+                margin-right: 6px;
+            }
+
+        #fos-net-search {
+            min-width: 120px;
+            width: 18vw;
+            padding: 5px;
+        }
+
+        #fos-net-count {
+            color: #aebfd1;
+            margin-left: auto;
+        }
+
+        #fos-net-main {
+            display: flex;
+            min-height: 0;
+            flex: 1;
+        }
+
+        #fos-net-list {
+            overflow: auto;
+            width: 48%;
+            border-right: 1px solid #3a4a5d;
+        }
+
+        #fos-net-detail {
+            overflow: auto;
+            flex: 1;
+            padding: 10px;
+        }
+
+        .fos-net-row {
+            display: grid;
+            grid-template-columns: 70px minmax(70px,1fr) 75px 70px;
+            gap: 8px;
+            align-items: center;
+            border-bottom: 1px solid #334356;
+            padding: 6px 8px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+            .fos-net-row:hover, .fos-net-row.fos-selected {
+                background: #34465d;
+            }
+
+            .fos-net-row.fos-error {
+                color: #ffb6b3;
+            }
+
+        .fos-net-url {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .fos-net-muted {
+            color: #aebfd1;
+        }
+
+        #fos-net-detail h3 {
+            font-size: 13px;
+            margin: 0 0 8px;
+            word-break: break-all;
+        }
+
+        #fos-net-detail h4 {
+            margin: 12px 0 4px;
+            font-size: 12px;
+        }
+
+        #fos-net-detail pre {
+            overflow: auto;
+            max-height: 30vh;
+            margin: 0;
+            padding: 8px;
+            background: #0d1722;
+            border: 1px solid #3a4a5d;
+            white-space: pre-wrap;
+            word-break: break-word;
+            user-select: text;
+        }
+
+        @media (max-width: 700px) {
+            #fos-net-panel {
+                height: 65vh;
+            }
+
+            #fos-net-list {
+                width: 55%;
+            }
+
+            .fos-net-row {
+                grid-template-columns: 45px minmax(50px,1fr) 40px;
+                gap: 4px;
+            }
+
+            .fos-net-duration {
+                display: none;
+            }
+        }
+    </style>
+    <script>
+        (function () {
+            'use strict';
+
+            var entries = [];
+            var nextId = 1;
+            var selectedId = null;
+            var onlyErrors = false;
+            var search = '';
+            var panel, toggle, list, detail, count, searchBox;
+            var MAX_ENTRIES = 300;
+            var MAX_BODY = 200000;
+
+            function localApi(url) {
+                return /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\]):9001(?:[/?#]|$)/i.test(String(url || ''));
+            }
+
+            function now() {
+                return window.performance && window.performance.now ? window.performance.now() : new Date().getTime();
+            }
+
+            function body(value) {
+                if (value == null) return '';
+                if (typeof value === 'string') return value.slice(0, MAX_BODY) + (value.length > MAX_BODY ? '\n[truncated]' : '');
+                if (typeof FormData !== 'undefined' && value instanceof FormData) return '[FormData]';
+                if (typeof Blob !== 'undefined' && value instanceof Blob) return '[Blob: ' + value.size + ' bytes]';
+                if (typeof ArrayBuffer !== 'undefined' && value instanceof ArrayBuffer) return '[ArrayBuffer: ' + value.byteLength + ' bytes]';
+                try { return String(JSON.stringify(value)).slice(0, MAX_BODY); }
+                catch (_) { return String(value).slice(0, MAX_BODY); }
+            }
+
+            function headers(value) {
+                if (!value) return '';
+                if (typeof value.forEach === 'function') {
+                    var lines = [];
+                    try { value.forEach(function (v, k) { lines.push(k + ': ' + v); }); return lines.join('\n'); }
+                    catch (_) { return ''; }
+                }
+                if (Object.prototype.toString.call(value) === '[object Array]') {
+                    return value.map(function (pair) { return pair[0] + ': ' + pair[1]; }).join('\n');
+                }
+                var result = [];
+                for (var key in value) if (Object.prototype.hasOwnProperty.call(value, key)) result.push(key + ': ' + value[key]);
+                return result.join('\n');
+            }
+
+            function createEntry(type, method, url, requestHeaders, requestBody) {
+                var entry = {
+                    id: nextId++, type: type, method: String(method || 'GET').toUpperCase(), url: String(url),
+                    time: new Date().toLocaleTimeString(), started: now(), duration: null,
+                    requestHeaders: requestHeaders || '', requestBody: body(requestBody),
+                    status: null, responseHeaders: '', responseBody: '', error: ''
+                };
+                entries.push(entry);
+                if (entries.length > MAX_ENTRIES) entries.shift();
+                render();
+                return entry;
+            }
+
+            function finish(entry, status, responseHeaders, responseBody, error) {
+                if (entry.duration !== null) return;
+                entry.duration = Math.round(now() - entry.started);
+                entry.status = status;
+                entry.responseHeaders = responseHeaders || '';
+                entry.responseBody = body(responseBody);
+                entry.error = error || '';
+                render();
+            }
+
+            function isError(entry) {
+                return !!entry.error || (entry.status !== null && (entry.status === 0 || entry.status >= 400));
+            }
+
+            function shown(entry) {
+                return (!onlyErrors || isError(entry)) && entry.url.toLowerCase().indexOf(search) !== -1;
+            }
+
+            function node(tag, className, value) {
+                var el = document.createElement(tag);
+                if (className) el.className = className;
+                el.textContent = value == null ? '' : String(value);
+                return el;
+            }
+
+            function render() {
+                if (!list) return;
+                var previousScroll = list.scrollTop;
+                while (list.firstChild) list.removeChild(list.firstChild);
+                var visible = 0;
+                var failures = 0;
+                for (var i = 0; i < entries.length; i++) {
+                    var entry = entries[i];
+                    if (isError(entry)) failures++;
+                    if (!shown(entry)) continue;
+                    visible++;
+                    var row = node('div', 'fos-net-row' + (isError(entry) ? ' fos-error' : '') +
+                        (entry.id === selectedId ? ' fos-selected' : ''), '');
+                    row.title = entry.url;
+                    row.appendChild(node('span', '', entry.method));
+                    row.appendChild(node('span', 'fos-net-url', entry.url.replace(/^https?:\/\/[^/]+/i, '')));
+                    row.appendChild(node('span', '', entry.error ? 'ERR' : entry.status === null ? '…' : entry.status));
+                    row.appendChild(node('span', 'fos-net-duration', entry.duration === null ? '…' : entry.duration + ' ms'));
+                    (function (id) { row.onclick = function () { selectedId = id; render(); }; })(entry.id);
+                    list.appendChild(row);
+                }
+                list.scrollTop = previousScroll;
+                count.textContent = visible + '/' + entries.length + ' requests' + (failures ? ' · ' + failures + ' errors' : '');
+                toggle.textContent = 'Network ' + entries.length + (failures ? ' ⚠' + failures : '');
+                renderDetail();
+            }
+
+            function renderDetail() {
+                while (detail.firstChild) detail.removeChild(detail.firstChild);
+                var entry = null;
+                for (var i = 0; i < entries.length; i++) if (entries[i].id === selectedId) entry = entries[i];
+                if (!entry) {
+                    detail.appendChild(node('span', 'fos-net-muted', 'Выберите запрос слева. Записываются fetch и XMLHttpRequest к localhost:9001.'));
+                    return;
+                }
+                detail.appendChild(node('h3', '', entry.method + ' ' + entry.url));
+                detail.appendChild(node('div', 'fos-net-muted', entry.type + ' · ' + entry.time +
+                    ' · ' + (entry.status === null ? 'ожидание' : 'HTTP ' + entry.status) +
+                    ' · ' + (entry.duration === null ? '…' : entry.duration + ' мс') +
+                    (entry.error ? ' · ' + entry.error : '')));
+                section('Request headers', entry.requestHeaders || '(нет)', detail);
+                section('Request body', entry.requestBody || '(пусто)', detail);
+                section('Response headers', entry.responseHeaders || '(нет)', detail);
+                section('Response body', entry.responseBody || '(пусто)', detail);
+            }
+
+            function section(title, value, parent) {
+                parent.appendChild(node('h4', '', title));
+                parent.appendChild(node('pre', '', value));
+            }
+
+            function copyLog() {
+                var copy = document.createElement('textarea');
+                copy.value = JSON.stringify(entries.map(function (e) {
+                    return {
+                        method: e.method, url: e.url, type: e.type, time: e.time,
+                        durationMs: e.duration, requestHeaders: e.requestHeaders,
+                        requestBody: e.requestBody, status: e.status,
+                        responseHeaders: e.responseHeaders, responseBody: e.responseBody, error: e.error
+                    };
+                }), null, 2);
+                copy.style.cssText = 'position:fixed;top:0;left:0;z-index:2147483647;opacity:0;width:1px;height:1px';
+                document.body.appendChild(copy);
+                copy.select();
+                var success = false;
+                try { success = document.execCommand('copy'); } catch (_) { /* fallback below */ }
+                if (!success) {
+                    copy.style.cssText = 'position:fixed;top:20%;left:20%;width:60%;height:55%;z-index:2147483647';
+                    copy.style.opacity = '1';
+                    copy.focus();
+                    window.alert('Автоматическое копирование недоступно. Нажмите Ctrl+C, затем закройте это поле.');
+                    copy.onblur = function () { if (copy.parentNode) copy.parentNode.removeChild(copy); };
+                } else document.body.removeChild(copy);
+            }
+
+            function initUI() {
+                toggle = node('button', '', 'Network 0');
+                toggle.id = 'fos-net-toggle';
+                toggle.type = 'button';
+                toggle.title = 'Показать или скрыть Network (F12)';
+                document.body.appendChild(toggle);
+                panel = node('div', '', '');
+                panel.id = 'fos-net-panel';
+                panel.innerHTML = '<div id="fos-net-toolbar"><strong>Network · localhost:9001</strong>' +
+                    '<input id="fos-net-search" type="search" placeholder="Фильтр по URL" aria-label="Фильтр по URL">' +
+                    '<button id="fos-net-errors" type="button">Ошибки</button>' +
+                    '<button id="fos-net-clear" type="button">Очистить</button>' +
+                    '<button id="fos-net-copy" type="button">Копировать JSON</button>' +
+                    '<span id="fos-net-count"></span><button id="fos-net-close" type="button">Закрыть</button></div>' +
+                    '<div id="fos-net-main"><div id="fos-net-list" role="list"></div>' +
+                    '<div id="fos-net-detail"></div></div>';
+                document.body.appendChild(panel);
+                list = document.getElementById('fos-net-list');
+                detail = document.getElementById('fos-net-detail');
+                count = document.getElementById('fos-net-count');
+                searchBox = document.getElementById('fos-net-search');
+                toggle.onclick = function () { panel.classList.toggle('fos-open'); };
+                document.getElementById('fos-net-close').onclick = function () { panel.classList.remove('fos-open'); };
+                document.getElementById('fos-net-clear').onclick = function () { entries.length = 0; selectedId = null; render(); };
+                document.getElementById('fos-net-copy').onclick = copyLog;
+                document.getElementById('fos-net-errors').onclick = function () {
+                    onlyErrors = !onlyErrors;
+                    this.style.backgroundColor = onlyErrors ? '#8b3535' : '';
+                    render();
+                };
+                searchBox.oninput = function () { search = searchBox.value.toLowerCase(); render(); };
+                document.addEventListener('keydown', function (event) {
+                    if (event.keyCode === 123 && !event.ctrlKey && !event.altKey) {
+                        panel.classList.toggle('fos-open');
+                        event.preventDefault();
+                    }
+                });
+                render();
+            }
+
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initUI);
+            else initUI();
+
+            if (window.XMLHttpRequest && window.XMLHttpRequest.prototype) {
+                var originalOpen = window.XMLHttpRequest.prototype.open;
+                var originalSend = window.XMLHttpRequest.prototype.send;
+                var originalHeader = window.XMLHttpRequest.prototype.setRequestHeader;
+                window.XMLHttpRequest.prototype.open = function (method, url) {
+                    var result = originalOpen.apply(this, arguments);
+                    this.__fosNetworkState = { method: method, url: url, headers: [] };
+                    return result;
+                };
+                window.XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
+                    var result = originalHeader.apply(this, arguments);
+                    if (this.__fosNetworkState) this.__fosNetworkState.headers.push(name + ': ' + value);
+                    return result;
+                };
+                window.XMLHttpRequest.prototype.send = function (requestBody) {
+                    var xhr = this;
+                    var state = xhr.__fosNetworkState;
+                    if (!state || !localApi(state.url)) return originalSend.apply(xhr, arguments);
+                    var entry = createEntry('XHR', state.method, state.url, state.headers.join('\n'), requestBody);
+                    var failure = '';
+                    function markError() { failure = 'Network error'; }
+                    function markAbort() { failure = 'Aborted'; }
+                    function markTimeout() { failure = 'Timeout'; }
+                    function onEnd() {
+                        xhr.removeEventListener('loadend', onEnd);
+                        xhr.removeEventListener('error', markError);
+                        xhr.removeEventListener('abort', markAbort);
+                        xhr.removeEventListener('timeout', markTimeout);
+                        var responseHeaders = '';
+                        var responseBody = '';
+                        var status = 0;
+                        try { status = xhr.status; } catch (_) { /* network error */ }
+                        try { responseHeaders = xhr.getAllResponseHeaders(); } catch (_) { /* network error */ }
+                        try {
+                            responseBody = !xhr.responseType || xhr.responseType === 'text' ? xhr.responseText : xhr.response;
+                        } catch (_) { responseBody = '[unavailable]'; }
+                        finish(entry, status, responseHeaders, responseBody, failure || (status === 0 ? 'No response' : ''));
+                    }
+                    xhr.addEventListener('loadend', onEnd);
+                    xhr.addEventListener('error', markError);
+                    xhr.addEventListener('abort', markAbort);
+                    xhr.addEventListener('timeout', markTimeout);
+                    try { return originalSend.apply(xhr, arguments); }
+                    catch (error) { onEnd(); entry.error = String(error); render(); throw error; }
+                };
+            }
+
+            if (typeof window.fetch === 'function') {
+                var originalFetch = window.fetch;
+                window.fetch = function (input, options) {
+                    var url = typeof input === 'string' ? input : input && input.url;
+                    if (!localApi(url)) return originalFetch.apply(this, arguments);
+                    var method = options && options.method || input && input.method || 'GET';
+                    var requestHeaders = headers(options && options.headers || input && input.headers);
+                    var requestBody = options && options.body;
+                    var entry = createEntry('fetch', method, url, requestHeaders, requestBody);
+                    if (requestBody == null && input && typeof input.clone === 'function') {
+                        try { input.clone().text().then(function (text) { entry.requestBody = body(text); render(); }); }
+                        catch (_) { /* the Request may be unavailable */ }
+                    }
+                    try {
+                        return originalFetch.apply(this, arguments).then(function (response) {
+                            var responseHeaders = headers(response.headers);
+                            try {
+                                response.clone().text().then(function (text) {
+                                    finish(entry, response.status, responseHeaders, text, '');
+                                }, function () { finish(entry, response.status, responseHeaders, '[unavailable]', ''); });
+                            } catch (_) { finish(entry, response.status, responseHeaders, '[unavailable]', ''); }
+                            return response;
+                        }, function (error) {
+                            finish(entry, 0, '', '', String(error));
+                            throw error;
+                        });
+                    } catch (error) {
+                        finish(entry, 0, '', '', String(error));
+                        throw error;
+                    }
+                };
+            }
+        })();
+    </script>
+    <title>Modern File Explorer app</title>
+</head>
+
+<body>
+    <textarea id="myTextarea" style="display:none" aria-hidden="true"></textarea>
+    <script type="text/javascript" src="localizationLoader.js"></script>
+    <script type="text/javascript" src="index.fabric~main.js"></script>
+    <script type="text/javascript" src="index.main.js"></script>
+    <script type="text/javascript" src="index.react~main.js"></script>
+</body>
 </html>

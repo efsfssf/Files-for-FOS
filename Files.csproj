@@ -24,11 +24,12 @@
     <AppInstallerCheckForUpdateFrequency>OnApplicationRun</AppInstallerCheckForUpdateFrequency>
     <AppxPackageDir>C:\Users\lukeb\Documents\Packages\</AppxPackageDir>
     <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
-    <PackageCertificateThumbprint>B0BF234AFBA40895A703F2A3CF223B6E9C7114D6</PackageCertificateThumbprint>
+    <PackageCertificateThumbprint>6F2B39E05ED6A82FA9A234C513F4F72278EEC010</PackageCertificateThumbprint>
     <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
     <GenerateTestArtifacts>True</GenerateTestArtifacts>
     <AppxBundle>Always</AppxBundle>
     <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
+    <PackageCertificateKeyFile />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
     <DebugSymbols>true</DebugSymbols>
@@ -259,6 +260,7 @@
     <None Include="FileExplorer\Assets\webPayload\languages\zh-cn.json" />
     <None Include="FileExplorer\Assets\webPayload\languages\zh-tw.json" />
     <None Include="FileExplorer\Assets\webPayload\languages\zu-za.json" />
+    <None Include="Files_TemporaryKey.pfx" />
     <None Include="MyKey.pfx" />
   </ItemGroup>
   <ItemGroup>
@@ -1914,7 +1916,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Bridge\Bridge.csproj">
-      <Project>{f4e8cff5-2c6b-45c2-8b20-1791b4286fc8}</Project>
+      <Project>{593d225e-1319-4126-ab9c-72050162f4f3}</Project>
       <Name>Bridge</Name>
     </ProjectReference>
   </ItemGroup>

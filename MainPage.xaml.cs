@@ -61,7 +61,7 @@ namespace Files
 
 
 
-        OnClipboardChanged();
+            OnClipboardChanged();
             StartServer();
             //WelcomeFileCheck(); - Legacy Function to be Removed Eventually
             //ContentFrame.Navigate(typeof(YourHome));
@@ -70,7 +70,7 @@ namespace Files
         }
         private void webView_NavigationStarting(WebView sender, WebViewNavigationStartingEventArgs args)
         {
-            Web.AddWebAllowedObject("clipboardOperations", new MyNativeClass());
+            //Web.AddWebAllowedObject("clipboardOperations", new MyNativeClass());
         }
 
         private async void OnClipboardChanged()
